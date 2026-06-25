@@ -7,7 +7,7 @@ Claude from your phone.
 - Stdlib Python only, **no dependencies**.
 - One-way notification **and** two-way reply via a single `Stop` hook (`asyncRewake`).
 - Your terminal is never blocked — the poller runs in the background.
-- Does nothing until you configure it, so it's safe to install and forget.
+- Token lives in your **OS keychain**, never in plaintext. Does nothing until configured.
 
 ## How it works
 
@@ -15,7 +15,7 @@ Claude from your phone.
 2. A background poller waits (up to 1h) for your reply.
 3. You reply on Telegram → the hook exits with code 2, waking Claude with your text as the next prompt.
 
-That's it. No daemon, nothing to start — it lives entirely inside Claude Code sessions and survives reboots.
+No daemon, nothing to start — it lives entirely inside Claude Code sessions and survives reboots.
 
 ## Install
 
@@ -24,31 +24,21 @@ That's it. No daemon, nothing to start — it lives entirely inside Claude Code 
 /plugin install telegram-notify@telegram-notify
 ```
 
-## Setup (2 minutes)
+When you enable it, Claude Code **prompts you for your bot token** (stored in your OS keychain).
+That's the only required field.
 
-1. **Create a bot.** Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
-2. **Get your chat id.** Send any message to your new bot, then run (replace `<TOKEN>`):
+## Setup (1 minute)
 
-   ```bash
-   curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates" | grep -o '"chat":{"id":[0-9]*'
-   ```
+1. **Create a bot:** message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
+2. Paste the token into the prompt when you enable the plugin.
+3. **Send any message to your bot** (e.g. `hi`). The chat id is auto-detected from it — no need to
+   find it yourself. (Optional: set it explicitly in the plugin config if you prefer.)
 
-3. **Configure env** in `~/.claude/settings.json`:
-
-   ```json
-   {
-     "env": {
-       "TELEGRAM_BOT_TOKEN": "123456:ABC...",
-       "TELEGRAM_CHAT_ID": "123456789"
-     }
-   }
-   ```
-
-4. Restart Claude Code (or open `/hooks` once to reload).
+Done. Next time Claude stops, you get a message.
 
 ## Usage
 
-- Just work normally. When Claude stops, you get its message on Telegram.
+- Work normally. When Claude stops, you get its message on Telegram.
 - **Reply** with anything → it becomes Claude's next prompt.
 - **Buttons:** when Claude offers choices, it ends a message with a line like:
 
@@ -61,20 +51,22 @@ That's it. No daemon, nothing to start — it lives entirely inside Claude Code 
 
 ## Config
 
-| Env var | Default | Meaning |
+Configured via the plugin's config prompt (`/plugin` → telegram-notify), or env vars as a fallback:
+
+| Field / env | Default | Meaning |
 |---|---|---|
-| `TELEGRAM_BOT_TOKEN` | — | Bot token from @BotFather (required) |
-| `TELEGRAM_CHAT_ID` | — | Your chat id (required) |
+| `bot_token` / `TELEGRAM_BOT_TOKEN` | — | Bot token from @BotFather (required, keychain) |
+| `chat_id` / `TELEGRAM_CHAT_ID` | auto | Your chat id; blank = auto-detect + cache |
 | `TG_WAIT` | `3600` | Seconds the poller waits for a reply before giving up |
 
-If you raise `TG_WAIT`, also raise the hook `timeout` in `hooks/hooks.json` to stay above it.
+If you raise `TG_WAIT`, also raise the hook `timeout` in `.claude-plugin/plugin.json` to stay above it.
 
 ## Notes & limits
 
 - **Owner-only:** the hook ignores messages from any chat id other than yours.
 - **One session at a time:** all sessions share one chat and one poller lock, so replies wake the
   most-recently-listening session. Two-way works cleanly for one active session at a time.
-- State (offset, lock) lives in `~/.cache/claude-telegram-notify/`.
+- State (offset, lock, detected chat id) lives in `~/.cache/claude-telegram-notify/`.
 - Requires Python 3 on `PATH`.
 
 ## Uninstall

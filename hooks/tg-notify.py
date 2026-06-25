@@ -2,18 +2,28 @@
 # Claude Code Stop hook (asyncRewake): push Claude's last message to Telegram,
 # then background-poll for a reply. A reply (typed or button tap) wakes Claude with it.
 #
-# Config via env (set in ~/.claude/settings.json "env", or your shell):
-#   TELEGRAM_BOT_TOKEN  - from @BotFather
-#   TELEGRAM_CHAT_ID    - your chat id (message the bot, then read getUpdates)
-#   TG_WAIT             - idle wait seconds before the poller gives up (default 3600)
+# Config comes from the plugin's userConfig (prompted on enable) via args, or env as a fallback:
+#   --token / TELEGRAM_BOT_TOKEN   from @BotFather (required)
+#   --chat-id / TELEGRAM_CHAT_ID   optional; auto-detected from your first message to the bot
+#   TG_WAIT                        idle wait seconds before the poller gives up (default 3600)
 #
 # Choices: end a message with a line "::buttons:: A | B | C" to render tap buttons.
 # Stdlib only, no dependencies.
-import json, os, sys, fcntl, time, urllib.parse, urllib.request
+import argparse, json, os, sys, fcntl, time, urllib.parse, urllib.request
 
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-if not TOKEN or not CHAT_ID:
+
+def clean(v):  # empty, or an unsubstituted ${user_config.*} placeholder -> treat as unset
+    v = (v or "").strip()
+    return "" if v.startswith("${") else v
+
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--token", default=os.environ.get("TELEGRAM_BOT_TOKEN", ""))
+ap.add_argument("--chat-id", default=os.environ.get("TELEGRAM_CHAT_ID", ""))
+ARGS, _ = ap.parse_known_args()
+
+TOKEN = clean(ARGS.token)
+if not TOKEN:
     sys.exit(0)  # not configured -> do nothing, never break the session
 
 API = f"https://api.telegram.org/bot{TOKEN}"
@@ -21,7 +31,9 @@ STATE = os.path.expanduser("~/.cache/claude-telegram-notify")
 os.makedirs(STATE, exist_ok=True)
 OFFSET_FILE = os.path.join(STATE, "offset")
 LOCK_FILE = os.path.join(STATE, "poll.lock")
+CHAT_FILE = os.path.join(STATE, "chat_id")
 WAIT = int(os.environ.get("TG_WAIT", "3600"))  # bounded idle wait; async hook so it's free
+CHAT_ID = None  # resolved in main()
 
 
 def post(method, **params):
@@ -36,6 +48,28 @@ def get_updates(**params):
     url = f"{API}/getUpdates?" + urllib.parse.urlencode(params)
     with urllib.request.urlopen(url, timeout=60) as r:
         return json.load(r).get("result", [])
+
+
+def resolve_chat_id():
+    cid = clean(ARGS.chat_id)
+    if cid:
+        return cid
+    try:
+        cid = open(CHAT_FILE).read().strip()
+        if cid:
+            return cid
+    except Exception:
+        pass
+    try:  # auto-detect: most recent chat that messaged the bot, then cache it
+        for u in reversed(get_updates(timeout=0)):
+            chat = (u.get("message") or u.get("callback_query", {}).get("message") or {}).get("chat", {})
+            if chat.get("id") is not None:
+                cid = str(chat["id"])
+                open(CHAT_FILE, "w").write(cid)
+                return cid
+    except Exception:
+        pass
+    return None
 
 
 def parse_buttons(text):
@@ -94,10 +128,16 @@ def stable_last_text(path, settle=0.3, tries=8):
 
 
 def main():
+    global CHAT_ID
     try:
         hook = json.load(sys.stdin)
     except Exception:
         hook = {}
+
+    CHAT_ID = resolve_chat_id()
+    if not CHAT_ID:
+        sys.exit(0)  # nobody has messaged the bot yet; nothing to notify
+
     body, buttons = parse_buttons(stable_last_text(hook.get("transcript_path", "")))
     send(body, buttons)
 

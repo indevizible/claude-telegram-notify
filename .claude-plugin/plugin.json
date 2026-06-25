@@ -1,8 +1,44 @@
 {
   "name": "telegram-notify",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Telegram notifications when Claude finishes a turn, with two-way reply: answer on Telegram (typed or tap a button) to wake the session with your next prompt. Stdlib Python, no dependencies.",
   "author": { "name": "indevizible" },
   "homepage": "https://github.com/indevizible/claude-telegram-notify",
-  "keywords": ["telegram", "notifications", "hooks", "remote-control"]
+  "keywords": ["telegram", "notifications", "hooks", "remote-control"],
+  "userConfig": {
+    "bot_token": {
+      "type": "string",
+      "title": "Telegram Bot Token",
+      "description": "Token from @BotFather. Stored in your OS keychain, never in settings.json.",
+      "sensitive": true,
+      "required": true
+    },
+    "chat_id": {
+      "type": "string",
+      "title": "Chat ID (optional)",
+      "description": "Leave blank to auto-detect from the first message you send your bot."
+    }
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/tg-notify.py",
+              "--token", "${user_config.bot_token}",
+              "--chat-id", "${user_config.chat_id}"
+            ],
+            "timeout": 3700,
+            "asyncRewake": true,
+            "rewakeMessage": "Telegram reply from user:",
+            "rewakeSummary": "Telegram reply"
+          }
+        ]
+      }
+    ]
+  }
 }
