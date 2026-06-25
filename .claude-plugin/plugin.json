@@ -1,7 +1,7 @@
 {
   "name": "telegram-notify",
-  "version": "0.2.0",
-  "description": "Telegram notifications when Claude finishes a turn, with two-way reply: answer on Telegram (typed or tap a button) to wake the session with your next prompt. Stdlib Python, no dependencies.",
+  "version": "0.3.0",
+  "description": "Telegram notifications when Claude finishes a turn, with two-way reply: answer on Telegram (typed or tap a button) to wake the session with your next prompt. Routes replies to the right session when several run at once. Stdlib Python, no dependencies.",
   "author": { "name": "indevizible" },
   "homepage": "https://github.com/indevizible/claude-telegram-notify",
   "keywords": ["telegram", "notifications", "hooks", "remote-control"],

@@ -61,12 +61,24 @@ Configured via the plugin's config prompt (`/plugin` → telegram-notify), or en
 
 If you raise `TG_WAIT`, also raise the hook `timeout` in `.claude-plugin/plugin.json` to stay above it.
 
+## Multiple sessions
+
+Run several Claude sessions at once and replies route to the right one:
+
+- **Reply to a specific message** (Telegram → long-press → Reply) → wakes the session that sent it.
+- **Tap a button** → wakes the session that offered it.
+- **Plain message** (no reply-to) → goes to the most-recently-active session.
+
+When more than one session is active, each notification is prefixed with a `📁 <repo> · <id>` label
+so you can tell them apart. Under the hood, Telegram's `getUpdates` is single-consumer, so one waiting
+session is elected leader (via a lock) and dispatches each reply to the correct session's inbox — no
+extra daemon, and leadership hands off automatically when a session wakes or times out.
+
 ## Notes & limits
 
 - **Owner-only:** the hook ignores messages from any chat id other than yours.
-- **One session at a time:** all sessions share one chat and one poller lock, so replies wake the
-  most-recently-listening session. Two-way works cleanly for one active session at a time.
-- State (offset, lock, detected chat id) lives in `~/.cache/claude-telegram-notify/`.
+- **Ended sessions:** replying to a message whose session has since exited gets a "session has ended" notice.
+- State (offset, lock, registry, inbox, detected chat id) lives in `~/.cache/claude-telegram-notify/`.
 - Requires Python 3 on `PATH`.
 
 ## Uninstall
