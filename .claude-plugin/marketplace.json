@@ -1,0 +1,11 @@
+{
+  "name": "telegram-notify",
+  "owner": { "name": "indevizible", "url": "https://github.com/indevizible" },
+  "plugins": [
+    {
+      "name": "telegram-notify",
+      "source": "./",
+      "description": "Telegram notifications + two-way reply for Claude Code."
+    }
+  ]
+}
