@@ -23,8 +23,8 @@ def clean(v):  # empty, or an unsubstituted ${user_config.*} placeholder -> trea
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--token", default=os.environ.get("TELEGRAM_BOT_TOKEN", ""))
-ap.add_argument("--chat-id", default=os.environ.get("TELEGRAM_CHAT_ID", ""))
+ap.add_argument("--token", default="")  # empty (incl. unset ${user_config.*}) falls back to env below
+ap.add_argument("--chat-id", default="")
 ap.add_argument("--selftest", action="store_true")
 ARGS, _ = ap.parse_known_args()
 
@@ -36,7 +36,7 @@ REG_LOCK = os.path.join(STATE, "registry.lock")
 CHAT_FILE = os.path.join(STATE, "chat_id")
 INBOX = os.path.join(STATE, "inbox")
 WAIT = int(os.environ.get("TG_WAIT", "3600"))
-TOKEN = clean(ARGS.token)
+TOKEN = clean(ARGS.token) or os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 API = f"https://api.telegram.org/bot{TOKEN}"
 CHAT_ID = None  # resolved in main()
 
@@ -142,7 +142,7 @@ def get_updates(**params):
 
 
 def resolve_chat_id():
-    cid = clean(ARGS.chat_id)
+    cid = clean(ARGS.chat_id) or os.environ.get("TELEGRAM_CHAT_ID", "").strip()
     if cid:
         return cid
     try:
