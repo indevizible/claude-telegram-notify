@@ -374,8 +374,8 @@ def notify():
     except Exception:
         hook = {}
     msg = (hook.get("message") or "").strip()
-    if not msg:
-        return
+    if not msg or "waiting for your input" in msg.lower():
+        return  # skip the idle nudge (Stop already notified); keep permission prompts etc.
     CHAT_ID = resolve_chat_id()
     if CHAT_ID:
         send(f"🔔 {msg}")
