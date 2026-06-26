@@ -26,6 +26,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--token", default="")  # empty (incl. unset ${user_config.*}) falls back to env below
 ap.add_argument("--chat-id", default="")
 ap.add_argument("--selftest", action="store_true")
+ap.add_argument("--notify", action="store_true")  # Notification event: send the heads-up message, no poll
 ARGS, _ = ap.parse_known_args()
 
 STATE = os.path.expanduser("~/.cache/claude-telegram-notify")
@@ -365,4 +366,22 @@ def main():
         take_inbox(my_session)
 
 
+def notify():
+    # Notification event (permission prompt / waiting for input): one-way heads-up, no poll.
+    global CHAT_ID
+    try:
+        hook = json.load(sys.stdin)
+    except Exception:
+        hook = {}
+    msg = (hook.get("message") or "").strip()
+    if not msg:
+        return
+    CHAT_ID = resolve_chat_id()
+    if CHAT_ID:
+        send(f"🔔 {msg}")
+
+
+if ARGS.notify:
+    notify()
+    sys.exit(0)
 sys.exit(main())

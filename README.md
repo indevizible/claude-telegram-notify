@@ -6,6 +6,7 @@ Claude from your phone.
 
 - Stdlib Python only, **no dependencies**.
 - One-way notification **and** two-way reply via a single `Stop` hook (`asyncRewake`).
+- Also pings you when Claude needs you **mid-turn** (permission prompt / waiting for input) via the `Notification` hook — a one-way heads-up (a permission gate can't be answered through the wake mechanism).
 - Your terminal is never blocked — the poller runs in the background.
 - Token lives in your **OS keychain**, never in plaintext. Does nothing until configured.
 
